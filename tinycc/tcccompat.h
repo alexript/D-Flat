@@ -94,14 +94,17 @@ typedef struct _IREGS {
 #define BIOSDATA    0x12
 #define KBDCODE     0x09
 
+#ifndef _FFBLK_DEFINED
+#define _FFBLK_DEFINED
 struct ffblk {
     unsigned long ff_reserved;
     unsigned long ff_attrib;
     unsigned short ff_ftime;
     unsigned short ff_fdate;
     unsigned long ff_fsize;
-    char ff_name[13];
+    char ff_name[260];
 };
+#endif
 
 #define FA_RDONLY   0x01
 #define FA_HIDDEN   0x02

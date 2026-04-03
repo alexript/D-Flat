@@ -5,8 +5,8 @@ CC = c:\tcc\tcc.exe
 CFLAGS = -I.
 LDFLAGS = -lkernel32 -luser32
 
-test.exe: test_main.obj test_rect.obj test_keys.obj rect_test.obj keys_test.obj test_tcccompat.obj test_tccwin32.obj ..\tinycc\tccwin32.obj
-	$(CC) -o test.exe test_main.obj test_rect.obj test_keys.obj rect_test.obj keys_test.obj test_tcccompat.obj test_tccwin32.obj ..\tinycc\tccwin32.obj $(LDFLAGS)
+test.exe: test_main.obj test_rect.obj test_keys.obj rect_test.obj keys_test.obj test_tcccompat.obj test_tccwin32.obj test_console.obj ..\tinycc\tccwin32.obj ..\win32\console_win32.obj
+	$(CC) -o test.exe test_main.obj test_rect.obj test_keys.obj rect_test.obj keys_test.obj test_tcccompat.obj test_tccwin32.obj test_console.obj ..\tinycc\tccwin32.obj ..\win32\console_win32.obj $(LDFLAGS)
 
 # test_main.c must be compiled with DF_TEST_IMPLEMENTATION
 test_main.obj: test_main.c df_test.h
@@ -30,8 +30,14 @@ test_tcccompat.obj: test_tcccompat.c df_test.h
 test_tccwin32.obj: test_tccwin32.c df_test.h
 	$(CC) $(CFLAGS) -c -o test_tccwin32.obj test_tccwin32.c
 
+test_console.obj: test_console.c df_test.h
+	$(CC) $(CFLAGS) -c -o test_console.obj test_console.c
+
 ..\tinycc\tccwin32.obj: ..\tinycc\tccwin32.c ..\tinycc\tccwin32.h
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+..\win32\console_win32.obj: ..\win32\console_win32.c ..\console.h ..\tinycc\tcccompat.h ..\tinycc\tccwin32.h
+	$(CC) $(CFLAGS) -I.. -c -o $@ $<
 
 run: test.exe
 	@.\test.exe

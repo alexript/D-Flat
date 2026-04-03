@@ -240,7 +240,10 @@ wnd->rc.tp = top;
 | `tests/test_*.c` | Unit test files |
 | `tinycc/tcccompat.h` | TinyCC DOS compatibility layer |
 | `tinycc/tccwin32.h` | Win32 function declarations |
-| `tinycc/tccwin32.c` | Win32 Console API implementation |
+| `tinycc/tccwin32.c` | Win32 Console API implementation (~660 lines) |
+| `console.h` | Platform Abstraction Layer (PAL) interface |
+| `win32/console_win32.c` | Win32 PAL implementation (~120 lines) |
+| `dos/console_dos.c` | DOS PAL implementation (~100 lines) |
 
 ## Development Workflow
 
@@ -266,7 +269,13 @@ wnd->rc.tp = top;
   - `tests/test_tcccompat.c` - Tests for compatibility layer (9 tests)
   - `tests/test_tccwin32.c` - Tests for Win32 functions (12 tests)
 
+- **Phase 3**: Platform Abstraction Layer (PAL)
+  - `console.h` - Platform-independent console interface (~200 lines)
+  - `win32/console_win32.c` - Win32 PAL implementation (~120 lines)
+  - `dos/console_dos.c` - DOS PAL implementation (~100 lines)
+  - `tests/test_console.c` - Tests for Console_* API (17 tests)
+
 ### Current Status
 
-- **Test Suite**: 41/41 tests passing
-- **Next**: Phase 3 - Platform Abstraction Layer (PAL)
+- **Test Suite**: 58/58 tests passing
+- **Next**: Phase 4 - Modify D-Flat headers (dflat.h, system.h, video.h) to use PAL
