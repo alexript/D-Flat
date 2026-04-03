@@ -278,4 +278,20 @@ wnd->rc.tp = top;
 ### Current Status
 
 - **Test Suite**: 58/58 tests passing
-- **Next**: Phase 4 - Modify D-Flat headers (dflat.h, system.h, video.h) to use PAL
+- **Next**: Phase 5 - Modify source files (message.c, video.c, console.c, mouse.c, direct.c) for Win32
+
+### Phase 4 Complete: Header Modifications
+
+- **Phase 4**: Header modifications for TinyCC
+  - `dflat.h` - Added TinyCC include section with tcccompat.h/windows.h, BOOL guard
+  - `system.h` - Added __TINYC__ section with consoleWidth/Height, stub functions (outp/inp/getvect/setvect)
+  - `video.h` - Added __TINYC__ section with VIDEOPTR/VIDEOTYPE types
+
+### Phase 5: Source Modifications (pending)
+
+Required changes:
+- `message.c` - Replace timer interrupt with GetTickCount() polling
+- `video.c` - Replace direct video memory access with Win32 API
+- `console.c` - Replace BIOS keyboard calls with Win32 functions
+- `mouse.c` - Replace int86(MOUSE) with Win32 mouse functions
+- `direct.c` - File operations already handled in tccwin32.c

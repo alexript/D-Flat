@@ -24,6 +24,9 @@
 #include <conio.h>
 #include <bios.h>
 #include <io.h>
+#elif defined(__TINYC__) || defined(_WIN32)
+#include "tinycc/tcccompat.h"
+#include <windows.h>
 #else
 #include "scdos.h"
 #endif
@@ -42,7 +45,9 @@ void *DFcalloc(size_t, size_t);
 void *DFmalloc(size_t);
 void *DFrealloc(void *, size_t);
 
+#ifndef BOOL
 typedef enum {FALSE, TRUE} BOOL;
+#endif
 
 #define MAXMESSAGES 100
 #define DELAYTICKS 1

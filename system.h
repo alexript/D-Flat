@@ -27,12 +27,30 @@
 #define COUNT (1193280L / FREQUENCY)
 #define ZEROFLAG 0x40
 #define MAXSAVES 50
+
+#ifdef __TINYC__
+#define SCREENWIDTH  (consoleWidth)
+#define SCREENHEIGHT (consoleHeight)
+#define clearBIOSbuffer() /* nothing */
+#define waitforkeyboard() /* nothing */
+#define outp(port, val) do { (void)(port); (void)(val); } while(0)
+#define inp(port) 0
+#define getvect(intno) ((void *)0)
+#define setvect(intno, func) do { (void)(intno); (void)(func); } while(0)
+#define keyportvalue 0
+#define peekb(seg, off) 0
+#define isEGA() 0
+#define isVGA() 0
+extern int consoleWidth;
+extern int consoleHeight;
+#else
 #define SCREENWIDTH  (peekb(0x40,0x4a) & 255)
 #define SCREENHEIGHT (isVGA() || isEGA() ? peekb(0x40,0x84)+1 : 25)
 #define clearBIOSbuffer() *(unsigned short far *)(MK_FP(0x40,0x1a)) = \
 		        	      *(unsigned short far *)(MK_FP(0x40,0x1c));
 #define waitforkeyboard() while ((keyportvalue & 0x80) == 0) \
 						  clearBIOSbuffer()
+#endif
 /* ----- keyboard BIOS (0x16) functions -------- */
 #define READKB 0
 #define KBSTAT 1

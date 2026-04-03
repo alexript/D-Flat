@@ -5,8 +5,22 @@
 
 #include "rect.h"
 
-void getvideo(RECT, void far *);
-void storevideo(RECT, void far *);
+#ifdef __TINYC__
+#define video_address  ((void *)0)
+typedef void *VIDEOPTR;
+typedef unsigned short VIDEOTYPE;
+#else
+#if defined(__COMPACT__) || defined(__LARGE__) || defined(__HUGE__)
+#define video_address  ((void far *)0xB8000000L)
+#else
+#define video_address  ((void near *)0xB8000000L)
+#endif
+typedef void far *VIDEOPTR;
+typedef unsigned short far *VIDEOTYPE;
+#endif
+
+void getvideo(RECT, VIDEOPTR);
+void storevideo(RECT, VIDEOPTR);
 extern unsigned video_mode;
 extern unsigned video_page;
 void wputch(WINDOW, int, int, int);
