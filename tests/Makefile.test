@@ -3,9 +3,10 @@
 
 CC = c:\tcc\tcc.exe
 CFLAGS = -I.
+LDFLAGS = -lkernel32 -luser32
 
-test.exe: test_main.obj test_rect.obj test_keys.obj rect_test.obj keys_test.obj
-	$(CC) -o test.exe test_main.obj test_rect.obj test_keys.obj rect_test.obj keys_test.obj
+test.exe: test_main.obj test_rect.obj test_keys.obj rect_test.obj keys_test.obj test_tcccompat.obj test_tccwin32.obj ..\tinycc\tccwin32.obj
+	$(CC) -o test.exe test_main.obj test_rect.obj test_keys.obj rect_test.obj keys_test.obj test_tcccompat.obj test_tccwin32.obj ..\tinycc\tccwin32.obj $(LDFLAGS)
 
 # test_main.c must be compiled with DF_TEST_IMPLEMENTATION
 test_main.obj: test_main.c df_test.h
@@ -22,6 +23,15 @@ rect_test.obj: rect_test.c test_dflat.h
 
 keys_test.obj: keys_test.c test_dflat.h
 	$(CC) $(CFLAGS) -c -o keys_test.obj keys_test.c
+
+test_tcccompat.obj: test_tcccompat.c df_test.h
+	$(CC) $(CFLAGS) -c -o test_tcccompat.obj test_tcccompat.c
+
+test_tccwin32.obj: test_tccwin32.c df_test.h
+	$(CC) $(CFLAGS) -c -o test_tccwin32.obj test_tccwin32.c
+
+..\tinycc\tccwin32.obj: ..\tinycc\tccwin32.c ..\tinycc\tccwin32.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 run: test.exe
 	@.\test.exe

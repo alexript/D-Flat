@@ -6,6 +6,8 @@
 /* Forward declarations of test suites */
 DF_TEST_SUITE *rect_tests(void);
 DF_TEST_SUITE *keys_tests(void);
+DF_TEST_SUITE *tcccompat_tests(void);
+DF_TEST_SUITE *tccwin32_tests(void);
 
 int main(int argc, char *argv[]) {
     (void)argc;
@@ -17,7 +19,9 @@ int main(int argc, char *argv[]) {
     /* Register all test suites */
     DF_TEST_SUITE *suites[] = {
         rect_tests(),
-        keys_tests()
+        keys_tests(),
+        tcccompat_tests(),
+        tccwin32_tests()
     };
     
     int suite_count = sizeof(suites) / sizeof(suites[0]);

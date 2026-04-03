@@ -238,6 +238,9 @@ wnd->rc.tp = top;
 | `makefile.bcc` | Borland C++ build file |
 | `tests/df_test.h` | Unit testing framework (single-header) |
 | `tests/test_*.c` | Unit test files |
+| `tinycc/tcccompat.h` | TinyCC DOS compatibility layer |
+| `tinycc/tccwin32.h` | Win32 function declarations |
+| `tinycc/tccwin32.c` | Win32 Console API implementation |
 
 ## Development Workflow
 
@@ -249,5 +252,21 @@ wnd->rc.tp = top;
 
 ## TinyCC Port Status
 
-- **Phase 1 complete**: Unit testing infrastructure
-- **Next**: Phase 2 - Compatibility infrastructure (tinycc/tcccompat.h, tccwin32.h, tccwin32.c)
+### Completed Phases
+
+- **Phase 1**: Unit testing infrastructure
+  - `tests/df_test.h` - Single-header testing framework
+  - `tests/test_rect.c`, `tests/test_keys.c` - Unit tests
+  - `tests/test_dflat.h` - Minimal D-Flat headers for testing
+
+- **Phase 2**: Compatibility infrastructure
+  - `tinycc/tcccompat.h` - DOS compatibility macros and types (far/near, REGS, interrupts)
+  - `tinycc/tccwin32.h` - Win32 function declarations
+  - `tinycc/tccwin32.c` - Win32 Console API implementation (~660 lines)
+  - `tests/test_tcccompat.c` - Tests for compatibility layer (9 tests)
+  - `tests/test_tccwin32.c` - Tests for Win32 functions (12 tests)
+
+### Current Status
+
+- **Test Suite**: 41/41 tests passing
+- **Next**: Phase 3 - Platform Abstraction Layer (PAL)
