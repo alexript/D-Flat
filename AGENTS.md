@@ -66,7 +66,30 @@ Flags: `-c` = compile only, `-d` = merge duplicates, `-ml` = large model
 
 ## Testing
 
-**This project has no automated test suite.** The "test" patterns found in the code (e.g., `TestAttribute`, `TestCriticalError`) are internal functions, not unit tests.
+### Unit Tests (TinyCC Port)
+
+The project now includes a unit testing framework for the TinyCC Windows port:
+
+```bash
+# Build and run tests
+cd tests
+c:\tcc\make.exe -f Makefile.test run
+
+# Just build
+c:\tcc\make.exe -f Makefile.test
+
+# Clean
+c:\tcc\make.exe -f Makefile.test clean
+```
+
+### Testing Framework
+
+- **Single-header library**: `tests/df_test.h` (stb-style)
+- **Implementation**: Define `DF_TEST_IMPLEMENTATION` before including
+- **Test files**: `test_rect.c`, `test_keys.c`, etc.
+- **Minimal D-Flat header**: `tests/test_dflat.h` (for testing without DOS dependencies)
+
+### Running DOS Build Tests
 
 To verify changes:
 1. Build the library: `make -f makefile.bcc dflat.lib`
@@ -147,7 +170,7 @@ D-Flat uses a message-passing architecture:
 
 ### Platform-Specific Code
 
-- Preprocessor defines: `BCPP` (Borland), `TURBOC`, `WATCOM`, `MSC` (Microsoft), `__SMALLER_C__`
+- Preprocessor defines: `BCPP` (Borland), `TURBOC`, `WATCOM`, `MSC` (Microsoft), `__SMALLER_C__`, `__TINYC__`
 - Use `#ifdef` guards for platform-specific code blocks
 - Inline assembly uses `asm` keyword (with appropriate guards)
 
@@ -199,6 +222,7 @@ wnd->rc.tp = top;
 - Uses BIOS int 0x10 (video), 0x16 (keyboard), 0x33 (mouse)
 - Assumes 80x25 minimum screen (supports 43/50 line modes)
 - Video memory access for text mode rendering
+- **TinyCC Windows port**: Uses Windows Console API instead of BIOS
 
 ## Key Files
 
@@ -212,12 +236,18 @@ wnd->rc.tp = top;
 | `classdef.h` | Window attribute flags |
 | `memopad.c` | Demo editor application |
 | `makefile.bcc` | Borland C++ build file |
+| `tests/df_test.h` | Unit testing framework (single-header) |
+| `tests/test_*.c` | Unit test files |
 
 ## Development Workflow
 
 1. Make changes to source files
 2. Rebuild: `make -f makefile.bcc all`
-3. Test in DOS environment
-4. Verify with manual testing
+3. For TinyCC port: `cd tests && make run`
+4. Test in DOS environment or Windows console
+5. Verify with automated tests (when available)
 
-No automated tests exist. All verification is manual.
+## TinyCC Port Status
+
+- **Phase 1 complete**: Unit testing infrastructure
+- **Next**: Phase 2 - Compatibility infrastructure (tinycc/tcccompat.h, tccwin32.h, tccwin32.c)

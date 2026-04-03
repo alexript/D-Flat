@@ -1,0 +1,33 @@
+# D-Flat Test Suite Makefile
+# For TinyCC (x64 Windows)
+
+CC = c:\tcc\tcc.exe
+CFLAGS = -I.
+
+test.exe: test_main.obj test_rect.obj test_keys.obj rect_test.obj keys_test.obj
+	$(CC) -o test.exe test_main.obj test_rect.obj test_keys.obj rect_test.obj keys_test.obj
+
+# test_main.c must be compiled with DF_TEST_IMPLEMENTATION
+test_main.obj: test_main.c df_test.h
+	$(CC) $(CFLAGS) -DF_TEST_IMPLEMENTATION -c -o test_main.obj test_main.c
+
+test_rect.obj: test_rect.c df_test.h test_dflat.h
+	$(CC) $(CFLAGS) -c -o test_rect.obj test_rect.c
+
+test_keys.obj: test_keys.c df_test.h test_dflat.h
+	$(CC) $(CFLAGS) -c -o test_keys.obj test_keys.c
+
+rect_test.obj: rect_test.c test_dflat.h
+	$(CC) $(CFLAGS) -c -o rect_test.obj rect_test.c
+
+keys_test.obj: keys_test.c test_dflat.h
+	$(CC) $(CFLAGS) -c -o keys_test.obj keys_test.c
+
+run: test.exe
+	@.\test.exe
+	@echo Tests passed!
+
+clean:
+	del /Q *.obj test.exe
+
+.PHONY: run clean
