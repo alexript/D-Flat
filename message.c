@@ -36,10 +36,12 @@ static int MsgQueueCtr;
 
 static int lagdelay = FIRSTDELAY;
 
+#ifndef __TINYC__
 static void interrupt (far *oldtimer)(void);
 static void interrupt (far *oldkeyboard)(void);
 
 static volatile int keyportvalue;	/* for watching for key release */
+#endif
 
 WINDOW CaptureMouse;
 WINDOW CaptureKeyboard;
@@ -53,6 +55,7 @@ char time_string[] = "         ";
 
 static WINDOW Cwnd;
 
+#ifndef __TINYC__
 static void interrupt far newkeyboard(void)
 {
 	keyportvalue = inp(KEYBOARDPORT);
@@ -78,6 +81,7 @@ static void interrupt far newtimer(void)
     oldtimer();
 #endif
 }
+#endif
 
 static char ermsg[] = "Error accessing drive x";
 
@@ -118,6 +122,7 @@ static void interrupt far newcrit(struct INTREGS** ppRegs)
 
 static void StopMsg(void)
 {
+#ifndef __TINYC__
     if (oldtimer != NULL)    {
         setvect(TIMER, oldtimer);
         oldtimer = NULL;
@@ -126,25 +131,28 @@ static void StopMsg(void)
         setvect(KEYBOARDVECT, oldkeyboard);
         oldkeyboard = NULL;
     }
-	ClearClipboard();
-	ClearDialogBoxes();
-	restorecursor();	
-	unhidecursor();
+#else
+    CloseWin32Console();
+#endif
+ 	ClearClipboard();
+ 	ClearDialogBoxes();
+ 	restorecursor();	
+ 	unhidecursor();
     hide_mousecursor();
 }
 
 /* ------------ initialize the message system --------- */
 BOOL init_messages(void)
 {
-	AllocTesting = TRUE;
-	if (setjmp(AllocError) != 0)	{
-		StopMsg();
-		return FALSE;
-	}
+ 	AllocTesting = TRUE;
+ 	if (setjmp(AllocError) != 0)	{
+ 		StopMsg();
+ 		return FALSE;
+ 	}
     resetmouse();
-	set_mousetravel(0, SCREENWIDTH-1, 0, SCREENHEIGHT-1);
-	savecursor();
-	hidecursor();
+ 	set_mousetravel(0, SCREENWIDTH-1, 0, SCREENHEIGHT-1);
+ 	savecursor();
+ 	hidecursor();
     px = py = -1;
     pmx = pmy = -1;
     mx = my = 0;
@@ -153,6 +161,7 @@ BOOL init_messages(void)
     NoChildCaptureKeyboard = FALSE;
     MsgQueueOnCtr = MsgQueueOffCtr = MsgQueueCtr = 0;
     EventQueueOnCtr = EventQueueOffCtr = EventQueueCtr = 0;
+#ifndef __TINYC__
     if (oldtimer == NULL)    {
         oldtimer = getvect(TIMER);
         setvect(TIMER, newtimer);
@@ -162,9 +171,12 @@ BOOL init_messages(void)
         setvect(KEYBOARDVECT, newkeyboard);
     }
     setvect(CRIT, newcrit);
+#else
+    InitWin32Console();
+#endif
     PostMessage(NULL,START,0,0);
     lagdelay = FIRSTDELAY;
-	return TRUE;
+ 	return TRUE;
 }
 
 /* ----- post an event and parameters to event queue ---- */
@@ -181,14 +193,26 @@ static void PostEvent(MESSAGE event, int p1, int p2)
 }
 
 /* ------ collect mouse, clock, and keyboard events ----- */
-static void near collect_events(void)
-{
+static void near collect_events(void) {
     static int ShiftKeys = 0;
 	int sk;
     struct tm *now;
     static BOOL flipflop = FALSE;
     int hr;
 
+#ifdef __TINYC__
+    Win32_PollInput();
+    {
+        static DWORD lastTick = 0;
+        DWORD nowTick = Win32_GetTickCount();
+        if (nowTick != lastTick) {
+            lastTick = nowTick;
+            if (timer_running(doubletimer)) countdown(doubletimer);
+            if (timer_running(delaytimer)) countdown(delaytimer);
+            if (timer_running(clocktimer)) countdown(clocktimer);
+        }
+    }
+#else
     /* -------- test for a clock event (one/second) ------- */
     if (timed_out(clocktimer))    {
         /* ----- get the current time ----- */
@@ -210,6 +234,7 @@ static void near collect_events(void)
         /* -------- post the clock event -------- */
         PostEvent(CLOCKTICK, FP_SEG(time_string), FP_OFF(time_string));
     }
+#endif /* __TINYC__ */
 
     /* --------- keyboard events ---------- */
     if ((sk = getshift()) != ShiftKeys)    {
@@ -221,13 +246,28 @@ static void near collect_events(void)
     }
 
     /* ---- build keyboard events for key combinations that
-        BIOS doesn't report --------- */
+        BIOS doesn"t report --------- */
+#ifndef __TINYC__
     if (sk & ALTKEY)	{
         if (keyportvalue == 14)    {
 			AltDown = FALSE;
 			waitforkeyboard();
             PostEvent(KEYBOARD, ALT_BS, sk);
         }
+        if (keyportvalue == 83)    {
+			AltDown = FALSE;
+			waitforkeyboard();
+            PostEvent(KEYBOARD, ALT_DEL, sk);
+        }
+	}
+    if (sk & CTRLKEY)	{
+		AltDown = FALSE;
+        if (keyportvalue == 82)    {
+			waitforkeyboard();
+            PostEvent(KEYBOARD, CTRL_INS, sk);
+        }
+	}
+#endif
         if (keyportvalue == 83)    {
 			AltDown = FALSE;
 			waitforkeyboard();

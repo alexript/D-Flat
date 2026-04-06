@@ -9,6 +9,10 @@ DF_TEST_SUITE *keys_tests(void);
 DF_TEST_SUITE *tcccompat_tests(void);
 DF_TEST_SUITE *tccwin32_tests(void);
 DF_TEST_SUITE *console_tests(void);
+DF_TEST_SUITE *message_tests(void);
+DF_TEST_SUITE *video_tests(void);
+DF_TEST_SUITE *mouse_tests(void);
+DF_TEST_SUITE *direct_tests(void);
 
 int main(int argc, char *argv[]) {
     (void)argc;
@@ -23,7 +27,11 @@ int main(int argc, char *argv[]) {
         keys_tests(),
         tcccompat_tests(),
         tccwin32_tests(),
-        console_tests()
+        console_tests(),
+        message_tests(),
+        video_tests(),
+        mouse_tests(),
+        direct_tests()
     };
     
     int suite_count = sizeof(suites) / sizeof(suites[0]);
