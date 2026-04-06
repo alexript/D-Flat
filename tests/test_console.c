@@ -139,7 +139,7 @@ static void test_console_get_current_dir(void) {
     char path[MAX_PATH];
     char *result = Console_GetCurrentDir(0, path);
     DF_ASSERT_NOT_NULL(result);
-    DF_ASSERT(result[0] != '\0');
+    DF_ASSERT_NE(result[0], '\0');
 }
 
 /* Change directory - restore original */

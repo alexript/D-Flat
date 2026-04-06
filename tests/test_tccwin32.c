@@ -15,8 +15,8 @@
 static void test_tccwin32_global_vars(void) {
     DF_ASSERT(consoleWidth > 0);
     DF_ASSERT(consoleHeight > 0);
-    DF_ASSERT(videoMode == 3);
-    DF_ASSERT(textAttribute == 0x07);
+    DF_ASSERT_EQ(videoMode, 3);
+    DF_ASSERT_EQ(textAttribute, 0x07);
 }
 
 static void test_tccwin32_mouse_installed(void) {
@@ -43,7 +43,7 @@ static void test_tccwin32_getvideomode(void) {
 
 static void test_tccwin32_getvect(void) {
     void *vec = Win32_getvect(0x10);
-    DF_ASSERT(vec == NULL);
+    DF_ASSERT_NULL(vec);
 }
 
 static void test_tccwin32_setvect(void) {
@@ -69,16 +69,16 @@ static void test_tccwin32_beep(void) {
 }
 
 static void test_tccwin32_colors(void) {
-    DF_ASSERT(BLACK == 0);
-    DF_ASSERT(WHITE == 15);
+    DF_ASSERT_EQ(BLACK, 0);
+    DF_ASSERT_EQ(WHITE, 15);
 }
 
 static void test_tccwin32_ffblk(void) {
     struct ffblk fb;
     fb.ff_attrib = FA_RDONLY;
     fb.ff_fsize = 1000;
-    DF_ASSERT(fb.ff_attrib == 1);
-    DF_ASSERT(fb.ff_fsize == 1000);
+    DF_ASSERT_EQ(fb.ff_attrib, 1);
+    DF_ASSERT_EQ(fb.ff_fsize, 1000);
 }
 
 DF_TEST_SUITE(tccwin32_tests)

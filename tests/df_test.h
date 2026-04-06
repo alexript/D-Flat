@@ -303,11 +303,11 @@ typedef struct {
  *     DF_ASSERT(x > 0);        // проверка значения
  *
  * Генерируемое сообщение:
- *   "Assertion failed: <выражение>"
+ *   "Assertion failed: <выражение> (expected non-zero, got 0)"
  */
 #define DF_ASSERT(expr) \
     do { if (!(expr)) { \
-        df_test_assert_fail(#expr, __FILE__, __LINE__); \
+        df_test_assert_fail(#expr, (long)(expr), __FILE__, __LINE__); \
     } } while(0)
 
 /* DF_ASSERT_TRUE — assertion для проверки истинности
@@ -759,7 +759,7 @@ DF_TEST_EXPORT int df_test_get_exit_code(void);
  *   file — имя исходного файла
  *   line — номер строки
  */
-DF_TEST_EXPORT void df_test_assert_fail(const char *expr, 
+DF_TEST_EXPORT void df_test_assert_fail(const char *expr, long actual_value,
     const char *file, int line);
 
 /* df_test_assert_eq_fail — обработка DF_ASSERT_EQ
@@ -1083,14 +1083,15 @@ void df_test_init(void) {
  * - Увеличивает _df_report.failed ДО longjmp
  * - longjmp восстанавливает контекст, сохранённый setjmp
  */
-void df_test_assert_fail(const char *expr, const char *file, int line) {
+void df_test_assert_fail(const char *expr, long actual_value,
+    const char *file, int line) {
     if (_df_report.count < DF_TEST_MAX_RESULTS) {
         _df_report.results[_df_report.count].file = file;
         _df_report.results[_df_report.count].line = line;
         _df_report.results[_df_report.count].failed_expr = expr;
         snprintf(_df_report.results[_df_report.count].message, 
             sizeof(_df_report.results[_df_report.count].message),
-            "Assertion failed: %s", expr);
+            "Assertion failed: %s (expected non-zero, got %ld)", expr, actual_value);
         _df_report.count++;
     }
     _df_report.failed++;

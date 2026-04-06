@@ -19,56 +19,56 @@ typedef union {
 static void test_tcccompat_far_near(void) {
     void *ptr = NULL;
     (void)ptr;
-    DF_ASSERT(ptr == NULL);
+    DF_ASSERT_NULL(ptr);
 }
 
 static void test_tcccompat_mk_fp(void) {
-    DF_ASSERT(C80 == 3);
-    DF_ASSERT(SCREENWIDTH == 80);
+    DF_ASSERT_EQ(C80, 3);
+    DF_ASSERT_EQ(SCREENWIDTH, 80);
 }
 
 static void test_tcccompat_regs_union(void) {
     TEST_REGS r;
     r.x.ax = 0x1234;
-    DF_ASSERT(r.h.al == 0x34);
-    DF_ASSERT(r.h.ah == 0x12);
+    DF_ASSERT_EQ(r.h.al, 0x34);
+    DF_ASSERT_EQ(r.h.ah, 0x12);
 }
 
 static void test_tcccompat_ffblk_struct(void) {
     struct ffblk fb;
     fb.ff_attrib = FA_RDONLY;
     fb.ff_fsize = 1000;
-    DF_ASSERT(fb.ff_attrib == 1);
-    DF_ASSERT(fb.ff_fsize == 1000);
+    DF_ASSERT_EQ(fb.ff_attrib, 1);
+    DF_ASSERT_EQ(fb.ff_fsize, 1000);
 }
 
 static void test_tcccompat_colors(void) {
-    DF_ASSERT(BLACK == 0);
-    DF_ASSERT(WHITE == 15);
-    DF_ASSERT(BLINK == 0x80);
-    DF_ASSERT(attr(WHITE, BLACK) == 0x0F);
+    DF_ASSERT_EQ(BLACK, 0);
+    DF_ASSERT_EQ(WHITE, 15);
+    DF_ASSERT_EQ(BLINK, 0x80);
+    DF_ASSERT_EQ(attr(WHITE, BLACK), 0x0F);
 }
 
 static void test_tcccompat_video_modes(void) {
-    DF_ASSERT(C80 == 3);
-    DF_ASSERT(C4350 == 8);
+    DF_ASSERT_EQ(C80, 3);
+    DF_ASSERT_EQ(C4350, 8);
 }
 
 static void test_tcccompat_bool_enum(void) {
     BOOL b = TRUE;
-    DF_ASSERT(b == TRUE);
+    DF_ASSERT_EQ(b, TRUE);
     b = FALSE;
-    DF_ASSERT(b == FALSE);
+    DF_ASSERT_EQ(b, FALSE);
 }
 
 static void test_tcccompat_null_defined(void) {
     void *p = NULL;
-    DF_ASSERT(p == NULL);
+    DF_ASSERT_NULL(p);
 }
 
 static void test_tcccompat_param_type(void) {
     PARAM p = 0x12345678;
-    DF_ASSERT(p == 0x12345678);
+    DF_ASSERT_EQ(p, 0x12345678);
 }
 
 DF_TEST_SUITE(tcccompat_tests)

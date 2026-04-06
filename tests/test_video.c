@@ -13,7 +13,7 @@ static void test_video_console_put_get_char(void) {
     /* Write a character and read it back */
     Console_PutChar(0, 0, 'X', 0x07);
     int ch = Console_GetChar(0, 0);
-    DF_ASSERT((ch & 0xFF) == 'X');
+    DF_ASSERT_EQ((ch & 0xFF), 'X');
 }
 
 static void test_video_console_put_get_with_different_attrs(void) {
@@ -24,8 +24,8 @@ static void test_video_console_put_get_with_different_attrs(void) {
     int ch1 = Console_GetChar(1, 0);
     int ch2 = Console_GetChar(2, 0);
     
-    DF_ASSERT((ch1 & 0xFF) == 'A');
-    DF_ASSERT((ch2 & 0xFF) == 'B');
+    DF_ASSERT_EQ((ch1 & 0xFF), 'A');
+    DF_ASSERT_EQ((ch2 & 0xFF), 'B');
 }
 
 static void test_video_screen_buffer_operations(void) {
@@ -47,7 +47,7 @@ static void test_video_screen_buffer_operations(void) {
     
     /* Verify */
     for (int i = 0; i < 80; i++) {
-        DF_ASSERT(read_buf[i * 2] == buf[i * 2]);
+        DF_ASSERT_EQ(read_buf[i * 2], buf[i * 2]);
     }
 }
 
@@ -84,7 +84,7 @@ static void test_video_multiple_lines(void) {
     /* Verify */
     for (int y = 0; y < 3; y++) {
         for (int x = 0; x < 10; x++) {
-            DF_ASSERT(read_buf[(y * 10 + x) * 2] == buf[(y * 10 + x) * 2]);
+            DF_ASSERT_EQ(read_buf[(y * 10 + x) * 2], buf[(y * 10 + x) * 2]);
         }
     }
 }
@@ -94,15 +94,15 @@ static void test_video_text_attribute_preservation(void) {
     Console_PutChar(5, 5, 'T', 0x2A);  /* Green on green (bright) */
     
     int ch = Console_GetChar(5, 5);
-    DF_ASSERT((ch & 0xFF) == 'T');
+    DF_ASSERT_EQ((ch & 0xFF), 'T');
     /* Note: attribute may be masked, just verify char is correct */
 }
 
 /* Video mode tests */
 static void test_video_mode_constants(void) {
-    DF_ASSERT(VIDEO_MODE_25 == 25);
-    DF_ASSERT(VIDEO_MODE_43 == 43);
-    DF_ASSERT(VIDEO_MODE_50 == 50);
+    DF_ASSERT_EQ(VIDEO_MODE_25, 25);
+    DF_ASSERT_EQ(VIDEO_MODE_43, 43);
+    DF_ASSERT_EQ(VIDEO_MODE_50, 50);
 }
 
 static void test_video_get_mode(void) {
@@ -129,8 +129,8 @@ static void test_video_clear_and_rewrite(void) {
     Console_PutChar(2, 1, 'i', 0x07);
     
     /* Verify */
-    DF_ASSERT((Console_GetChar(1, 1) & 0xFF) == 'H');
-    DF_ASSERT((Console_GetChar(2, 1) & 0xFF) == 'i');
+    DF_ASSERT_EQ((Console_GetChar(1, 1) & 0xFF), 'H');
+    DF_ASSERT_EQ((Console_GetChar(2, 1) & 0xFF), 'i');
 }
 
 DF_TEST_SUITE(video_tests)

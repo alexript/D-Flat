@@ -21,10 +21,10 @@ static void test_message_timer_macros(void) {
 
     timer = 10;
     DF_ASSERT(timer_running(timer) != 0);
-    DF_ASSERT(timed_out(timer) == 0);
+    DF_ASSERT_EQ(timed_out(timer), 0);
 
     countdown(timer);
-    DF_ASSERT(timer == 9);
+    DF_ASSERT_EQ(timer, 9);
 
     countdown(timer);
     countdown(timer);
@@ -34,14 +34,14 @@ static void test_message_timer_macros(void) {
     countdown(timer);
     countdown(timer);
     countdown(timer);
-    DF_ASSERT(timer == 1);
+    DF_ASSERT_EQ(timer, 1);
     countdown(timer);
-    DF_ASSERT(timer == 0);
+    DF_ASSERT_EQ(timer, 0);
     DF_ASSERT(timed_out(timer) != 0);
 
     disable_timer(timer);
-    DF_ASSERT(timer == -1);
-    DF_ASSERT(timer_running(timer) == 0);
+    DF_ASSERT_EQ(timer, -1);
+    DF_ASSERT_EQ(timer_running(timer), 0);
 }
 
 static void test_message_set_timer(void) {
@@ -54,7 +54,7 @@ static void test_message_set_timer(void) {
 
 static void test_message_init_win32(void) {
     int result = InitWin32Console();
-    DF_ASSERT(result == 0 || result != 0);
+    DF_ASSERT(1);
     DF_ASSERT(consoleWidth > 0);
     DF_ASSERT(consoleHeight > 0);
 }
@@ -85,7 +85,7 @@ static void test_message_timer_polling_logic(void) {
 
     lastTick = nowTick;
     nowTick = Win32_GetTickCount();
-    DF_ASSERT(nowTick == lastTick);
+    DF_ASSERT_EQ(nowTick, lastTick);
 }
 
 static void test_message_mouse_position(void) {

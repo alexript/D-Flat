@@ -31,7 +31,7 @@ static void test_direct_get_current_dir(void) {
     char *result = Console_GetCurrentDir(0, path);
     
     DF_ASSERT_NOT_NULL(result);
-    DF_ASSERT(result[0] != '\0');
+    DF_ASSERT_NE(result[0], '\0');
     
     /* Path should be absolute and contain backslashes */
     DF_ASSERT(strchr(result, '\\') != NULL || result[1] == ':');
@@ -44,7 +44,7 @@ static void test_direct_change_dir(void) {
     
     /* Try to change to current directory (should succeed) */
     int result = Console_ChangeDir(original);
-    DF_ASSERT(result == 0);
+    DF_ASSERT_EQ(result, 0);
     
     /* Verify we're still in the same directory */
     char current[MAX_PATH];
@@ -61,7 +61,7 @@ static void test_direct_find_first_file(void) {
     
     /* Should succeed (there should be files) */
     if (result == 0) {
-        DF_ASSERT(fb.ff_name[0] != '\0');
+        DF_ASSERT_NE(fb.ff_name[0], '\0');
         Console_FindClose(&fb);
     }
     /* If result != 0, it may mean no files found - not necessarily an error */
@@ -79,7 +79,7 @@ static void test_direct_find_directories(void) {
         if (fb.ff_attrib & FA_DIREC) {
             found_dir = 1;
             /* Directory names should be valid */
-            DF_ASSERT(fb.ff_name[0] != '\0');
+            DF_ASSERT_NE(fb.ff_name[0], '\0');
             /* Check for special directories */
             if (strcmp(fb.ff_name, ".") == 0 || strcmp(fb.ff_name, "..") == 0) {
                 /* These are valid directory entries */
@@ -103,7 +103,7 @@ static void test_direct_find_iteration(void) {
     
     while (result == 0 && count < 100) {  /* Limit to prevent infinite loop */
         count++;
-        DF_ASSERT(fb.ff_name[0] != '\0');
+        DF_ASSERT_NE(fb.ff_name[0], '\0');
         result = Console_FindNext(&fb);
     }
     
@@ -173,7 +173,7 @@ static void test_direct_set_drive(void) {
     
     /* Verify drive is still the same */
     char current = Console_GetCurrentDrive();
-    DF_ASSERT(current == original);
+    DF_ASSERT_EQ(current, original);
 }
 
 DF_TEST_SUITE(direct_tests)
