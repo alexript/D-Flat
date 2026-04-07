@@ -1302,7 +1302,8 @@ void df_test_run_suite(DF_TEST_SUITE *suite) {
  *   3. Для каждого вызывает df_test_run_suite()
  */
 void df_test_run_all(DF_TEST_SUITE **suites, int count) {
-    df_test_init();
+    memset(&_df_test_ctx, 0, sizeof(_df_test_ctx));
+    memset(&_df_tc_ctx, 0, sizeof(_df_tc_ctx));
     
     for (int i = 0; i < count; i++) {
         df_test_run_suite(suites[i]);

@@ -13,6 +13,7 @@ DF_TEST_SUITE *message_tests(void);
 DF_TEST_SUITE *video_tests(void);
 DF_TEST_SUITE *mouse_tests(void);
 DF_TEST_SUITE *direct_tests(void);
+DF_TEST_SUITE *df_test_framework_tests(void);
 
 int main(int argc, char *argv[]) {
     (void)argc;
@@ -23,6 +24,7 @@ int main(int argc, char *argv[]) {
     
     /* Register all test suites */
     DF_TEST_SUITE *suites[] = {
+        df_test_framework_tests(),
         rect_tests(),
         keys_tests(),
         tcccompat_tests(),
