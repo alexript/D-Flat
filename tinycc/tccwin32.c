@@ -36,8 +36,12 @@ static int shiftState = 0;
 
 int InitWin32Console(void)
 {
-    hConsoleInput = GetStdHandle(STD_INPUT_HANDLE);
-    hConsoleOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+    hConsoleInput = CreateFile("CONIN$", GENERIC_READ | GENERIC_WRITE,
+                               FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                               OPEN_EXISTING, 0, NULL);
+    hConsoleOutput = CreateFile("CONOUT$", GENERIC_READ | GENERIC_WRITE,
+                                FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                                OPEN_EXISTING, 0, NULL);
     
     if (hConsoleInput == INVALID_HANDLE_VALUE || hConsoleOutput == INVALID_HANDLE_VALUE) {
         return -1;
