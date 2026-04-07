@@ -3,7 +3,7 @@
 #include "df_test.h"
 #include "test_dflat.h"
 
-/* Tests for framework FAIL mechanism */
+/* Tests for framework FAIL mechanism - expected to fail */
 static void framework_test_fail(void) {
     DF_ASSERT(0);
 }
@@ -184,7 +184,7 @@ static void framework_test_zero_and_negative(void) {
 }
 
 DF_TEST_SUITE(df_test_framework_tests)
-    DF_TEST_CASE(framework_test_fail)
+    DF_TEST_CASE_XFAIL(framework_test_fail)
     DF_TEST_CASE(framework_test_assert_eq)
     DF_TEST_CASE(framework_test_assert_ne)
     DF_TEST_CASE(framework_test_assert_int_eq)
@@ -194,13 +194,13 @@ DF_TEST_SUITE(df_test_framework_tests)
     DF_TEST_CASE(framework_test_assert_null)
     DF_TEST_CASE(framework_test_assert_not_null)
     DF_TEST_CASE(framework_test_assert_str_eq)
-    DF_TEST_CASE(framework_test_shadowing_after_fail)
-    DF_TEST_CASE(framework_test_pass_then_fail)
+    DF_TEST_CASE_XFAIL(framework_test_shadowing_after_fail)
+    DF_TEST_CASE_XFAIL(framework_test_pass_then_fail)
     DF_TEST_CASE(framework_test_assert_mem_eq)
     DF_TEST_CASE(framework_test_assert_bool_eq)
     DF_TEST_CASE(framework_test_assert_rect_eq)
     DF_TEST_CASE(framework_test_assert_rect_valid)
-    DF_TEST_CASE(framework_test_multiple_asserts_same_line)
+    DF_TEST_CASE_XFAIL(framework_test_multiple_asserts_same_line)
     DF_TEST_CASE(framework_test_negation_asserts)
     DF_TEST_CASE(framework_test_ptr_comparison)
     DF_TEST_CASE(framework_test_get_report_exists)

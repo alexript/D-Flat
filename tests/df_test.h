@@ -142,19 +142,22 @@ typedef void (*DF_TEST_TEARDOWN)(void);
  *   name    — имя теста (строка, используется в отчётах)
  *   func    — указатель на функцию теста
  *   skipped — флаг пропуска (1 = тест пропущен, 0 = выполняется)
+ *   xfail   — флаг ожидаемого провала (1 = тест должен упасть, 0 = обычный тест)
  *
  * Пример:
  *
  *     DF_TEST_CASE my_test = {
  *         "test_name",
  *         test_name,  // функция void test_name(void)
- *         0           // не пропущен
+ *         0,          // не пропущен
+ *         0           // не xfail
  *     };
  */
 typedef struct {
     const char *name;    /* Имя тестового случая для отчётов */
     DF_TEST_FUNC func;   /* Указатель на функцию теста */
     int skipped;         /* Флаг пропуска: 1 = пропущен, 0 = выполняется */
+    int xfail;           /* Флаг ожидаемого провала: 1 = xfail, 0 = обычный */
 } DF_TEST_CASE;
 
 /* DF_TEST_SUITE — структура набора тестов
@@ -169,6 +172,8 @@ typedef struct {
  *   tests_passed — счётчик успешных тестов
  *   tests_failed — счётчик проваленных тестов
  *   tests_skipped — счётчик пропущенных тестов
+ *   tests_xfailed — счётчик ожидаемых провалов (xfail, упал как ожидалось)
+ *   tests_xpassed — счётчик неожиданных проходов (xpass, должен был упасть но прошёл)
  *
  * Пример:
  *
@@ -176,7 +181,7 @@ typedef struct {
  *         "MyTests",
  *         my_tests,        // массив DF_TEST_CASE
  *         3,               // 3 теста
- *         0, 0, 0, 0       // счётчики (обнуляются при старте)
+ *         0, 0, 0, 0, 0, 0 // счётчики (обнуляются при старте)
  *     };
  */
 typedef struct {
@@ -187,6 +192,8 @@ typedef struct {
     int tests_passed;       /* Количество успешных тестов */
     int tests_failed;       /* Количество проваленных тестов */
     int tests_skipped;      /* Количество пропущенных тестов */
+    int tests_xfailed;      /* Количество ожидаемых провалов (упал как ожидалось) */
+    int tests_xpassed;       /* Количество неожиданных проходов (должен был упасть но прошёл) */
 } DF_TEST_SUITE;
 
 /* =============================================================================
@@ -235,6 +242,8 @@ typedef struct {
  *   count   — количество фактических записей в results
  *   passed  — общее количество успешных тестов
  *   failed  — общее количество проваленных тестов
+ *   xfailed — количество ожидаемых провалов (тест упал как ожидалось)
+ *   xpassed — количество неожиданных проходов (тест должен был упасть но прошёл)
  *
  * Использование:
  *
@@ -246,6 +255,8 @@ typedef struct {
     int count;        /* Фактическое количество записей */
     int passed;       /* Количество успешных тестов */
     int failed;       /* Количество проваленных тестов */
+    int xfailed;      /* Количество ожидаемых провалов */
+    int xpassed;      /* Количество неожиданных проходов */
 } DF_TEST_REPORT;
 
 /* =============================================================================
@@ -275,16 +286,19 @@ typedef struct {
  *
  * Поля:
  *   failed     — флаг ошибки (1 = тест уже упал)
+ *   xfail      — флаг xfail теста (1 = это expected fail тест)
  *   suite_name — имя набора (для записи в отчёт)
  *   test_name  — имя теста (для записи в отчёт)
  *
  * Использование:
- *   1. df_test_run_suite() сбрасывает failed=0 перед каждым тестом
- *   2. DF_ASSERT_* проверяют failed перед выполнением
- *   3. После tc->func() проверяется failed для определения результата
+ *   1. df_test_run_suite() сбрасывает failed=0 и xfail перед каждым тестом
+ *   2. Для xfail тестов устанавливается xfail=1
+ *   3. DF_ASSERT_* проверяют failed перед выполнением
+ *   4. После tc->func() проверяется failed и xfail для определения результата
  */
 typedef struct {
     int failed;           /* 1 = тест уже упал на предыдущем assert */
+    int xfail;           /* 1 = это xfail тест (expected to fail) */
     const char *suite_name;  /* Имя текущего набора */
     const char *test_name;   /* Имя текущего теста */
 } DF_TC_CONTEXT;
@@ -625,7 +639,7 @@ extern DF_TC_CONTEXT _df_tc_ctx;
  *     DF_TEST_SUITE_END(MyTests)
  */
 #define DF_TEST_CASE(test_name) \
-    { #test_name, test_name, 0 },
+    { #test_name, test_name, 0, 0 },
 
 /* DF_TEST_CASE_SKIP — добавляет пропускаемый тест
  *
@@ -640,7 +654,35 @@ extern DF_TC_CONTEXT _df_tc_ctx;
  *     DF_TEST_CASE_SKIP(test_not_implemented)
  */
 #define DF_TEST_CASE_SKIP(test_name) \
-    { #test_name, test_name, 1 },
+    { #test_name, test_name, 1, 0 },
+
+/* DF_TEST_CASE_XFAIL — добавляет тест с ожидаемым провалом
+ *
+ * Аналогичен DF_TEST_CASE, но тест помечается как ожидаемо падающий
+ * (xfail = 1). Такой тест считается УСПЕШНЫМ (passed), если он
+ * падает, и ПРОВАЛИВШИМСЯ (failed), если он неожиданно проходит.
+ *
+ * Это позволяет тестировать, что определённые ситуации действительно
+ * приводят к ошибкам (например, проверка обработки некорректных данных).
+ *
+ * Параметры:
+ *   test_name — имя теста
+ *
+ * Пример:
+ *
+ *     // Тест проверяет, что передача NULL вызывает ошибку
+ *     static void test_null_pointer(void) {
+ *         DF_ASSERT_NULL(NULL);  // это упадёт с xfail=0
+ *     }
+ *     // Лучше:
+ *     static void test_null_pointer_xfail(void) {
+ *         void *p = NULL;
+ *         DF_ASSERT_NOT_NULL(p);  // это упадёт (p==NULL), и это ОЖИДАЕМО
+ *     }
+ *     DF_TEST_CASE_XFAIL(test_null_pointer_xfail)
+ */
+#define DF_TEST_CASE_XFAIL(test_name) \
+    { #test_name, test_name, 0, 1 },
 
 /* DF_TEST_SUITE_END — завершает определение набора
  *
@@ -668,7 +710,7 @@ extern DF_TC_CONTEXT _df_tc_ctx;
         #suite_name, \
         suite_name##_tests, \
         sizeof(suite_name##_tests) / sizeof(DF_TEST_CASE), \
-        0, 0, 0, 0 \
+        0, 0, 0, 0, 0, 0 \
     }; \
     DF_TEST_SUITE *suite_name(void) { return &suite_name##_suite; }
 
@@ -1132,7 +1174,7 @@ void df_test_init(void) {
  */
 void df_test_assert_fail(const char *expr, long actual_value,
     const char *file, int line) {
-    if (_df_report.count < DF_TEST_MAX_RESULTS) {
+    if (_df_report.count < DF_TEST_MAX_RESULTS && !_df_tc_ctx.xfail) {
         _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
         _df_report.results[_df_report.count].test_name = _df_tc_ctx.test_name;
         _df_report.results[_df_report.count].file = file;
@@ -1156,7 +1198,7 @@ void df_test_assert_fail(const char *expr, long actual_value,
  */
 void df_test_assert_eq_fail(long a, long b, 
     const char *expr_a, const char *expr_b, const char *file, int line) {
-    if (_df_report.count < DF_TEST_MAX_RESULTS) {
+    if (_df_report.count < DF_TEST_MAX_RESULTS && !_df_tc_ctx.xfail) {
         _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
         _df_report.results[_df_report.count].test_name = _df_tc_ctx.test_name;
         _df_report.results[_df_report.count].file = file;
@@ -1175,7 +1217,7 @@ void df_test_assert_eq_fail(long a, long b,
  */
 void df_test_assert_ne_fail(long a, long b, 
     const char *expr_a, const char *expr_b, const char *file, int line) {
-    if (_df_report.count < DF_TEST_MAX_RESULTS) {
+    if (_df_report.count < DF_TEST_MAX_RESULTS && !_df_tc_ctx.xfail) {
         _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
         _df_report.results[_df_report.count].test_name = _df_tc_ctx.test_name;
         _df_report.results[_df_report.count].file = file;
@@ -1197,7 +1239,7 @@ void df_test_assert_ne_fail(long a, long b,
  */
 void df_test_assert_str_eq_fail(const char *a, const char *b, 
     const char *file, int line) {
-    if (_df_report.count < DF_TEST_MAX_RESULTS) {
+    if (_df_report.count < DF_TEST_MAX_RESULTS && !_df_tc_ctx.xfail) {
         _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
         _df_report.results[_df_report.count].test_name = _df_tc_ctx.test_name;
         _df_report.results[_df_report.count].file = file;
@@ -1220,7 +1262,7 @@ void df_test_assert_str_eq_fail(const char *a, const char *b,
  */
 void df_test_assert_mem_eq_fail(const void *a, const void *b, 
     size_t size, const char *file, int line) {
-    if (_df_report.count < DF_TEST_MAX_RESULTS) {
+    if (_df_report.count < DF_TEST_MAX_RESULTS && !_df_tc_ctx.xfail) {
         _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
         _df_report.results[_df_report.count].test_name = _df_tc_ctx.test_name;
         _df_report.results[_df_report.count].file = file;
@@ -1270,25 +1312,41 @@ void df_test_run_suite(DF_TEST_SUITE *suite) {
         suite->tests_run++;
         
         _df_tc_ctx.failed = 0;
+        _df_tc_ctx.xfail = tc->xfail;
         _df_tc_ctx.suite_name = suite->name;
         _df_tc_ctx.test_name = tc->name;
         
         tc->func();
         
         if (_df_tc_ctx.failed) {
-            suite->tests_failed++;
-            _df_report.failed++;
-            printf("FAIL\n");
+            if (tc->xfail) {
+                suite->tests_xfailed++;
+                _df_report.xfailed++;
+                _df_report.passed++;
+                printf("XFAIL\n");
+            } else {
+                suite->tests_failed++;
+                _df_report.failed++;
+                printf("FAIL\n");
+            }
         } else {
-            suite->tests_passed++;
-            _df_report.passed++;
-            printf("PASS\n");
+            if (tc->xfail) {
+                suite->tests_xpassed++;
+                _df_report.xpassed++;
+                _df_report.failed++;
+                printf("XPASS\n");
+            } else {
+                suite->tests_passed++;
+                _df_report.passed++;
+                printf("PASS\n");
+            }
         }
     }
     
-    printf("\nResults: %d/%d passed, %d failed, %d skipped\n",
+    printf("\nResults: %d/%d passed, %d failed, %d skipped, %d xfailed, %d xpassed\n",
         suite->tests_passed, suite->tests_run, 
-        suite->tests_failed, suite->tests_skipped);
+        suite->tests_failed, suite->tests_skipped,
+        suite->tests_xfailed, suite->tests_xpassed);
 }
 
 /* df_test_run_all — выполнение всех наборов тестов
@@ -1347,6 +1405,9 @@ void df_test_print_report(void) {
     printf("========================================\n");
     printf("Total passed:  %d\n", _df_report.passed);
     printf("Total failed:  %d\n", _df_report.failed);
+    if (_df_report.xfailed > 0 || _df_report.xpassed > 0) {
+        printf("  (xfailed: %d, xpassed: %d)\n", _df_report.xfailed, _df_report.xpassed);
+    }
     printf("Total results: %d\n", _df_report.count);
     
     if (_df_report.count > 0) {
