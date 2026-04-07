@@ -139,8 +139,8 @@ static void framework_test_ptr_comparison(void) {
     int *ptr1 = &val;
     int *ptr2 = &val;
     int *ptr3 = NULL;
-    DF_ASSERT_EQ((long)ptr1, (long)ptr2);
-    DF_ASSERT_NE((long)ptr1, (long)ptr3);
+    DF_ASSERT_EQ((intptr_t)ptr1, (intptr_t)ptr2);
+    DF_ASSERT_NE((intptr_t)ptr1, (intptr_t)ptr3);
     DF_ASSERT_NULL(ptr3);
     DF_ASSERT_NOT_NULL(ptr1);
 }

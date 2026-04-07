@@ -80,6 +80,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 /* DF_TEST_EXPORT — макрос экспорта символов
  *
@@ -387,9 +388,9 @@ extern DF_TC_CONTEXT _df_tc_ctx;
  *   "Expected x (5) == y (10)"
  */
 #define DF_ASSERT_EQ(a, b) \
-    do { if (!_df_tc_ctx.failed && (a) != (b)) { \
+    do { if (!_df_tc_ctx.failed && (intptr_t)(a) != (intptr_t)(b)) { \
         _df_tc_ctx.failed = 1; \
-        df_test_assert_eq_fail((long)(a), (long)(b), #a, #b, __FILE__, __LINE__); \
+        df_test_assert_eq_fail((intptr_t)(a), (intptr_t)(b), #a, #b, __FILE__, __LINE__); \
     } } while(0)
 
 /* DF_ASSERT_NE — assertion неравенства (generic)
@@ -408,9 +409,9 @@ extern DF_TC_CONTEXT _df_tc_ctx;
  *     DF_ASSERT_NE(status, ERROR_CODE);
  */
 #define DF_ASSERT_NE(a, b) \
-    do { if (!_df_tc_ctx.failed && (a) == (b)) { \
+    do { if (!_df_tc_ctx.failed && (intptr_t)(a) == (intptr_t)(b)) { \
         _df_tc_ctx.failed = 1; \
-        df_test_assert_ne_fail((long)(a), (long)(b), #a, #b, __FILE__, __LINE__); \
+        df_test_assert_ne_fail((intptr_t)(a), (intptr_t)(b), #a, #b, __FILE__, __LINE__); \
     } } while(0)
 
 /* DF_ASSERT_NULL — assertion проверки на NULL
@@ -838,7 +839,7 @@ DF_TEST_EXPORT int df_test_get_exit_code(void);
  *   file — имя исходного файла
  *   line — номер строки
  */
-DF_TEST_EXPORT void df_test_assert_fail(const char *expr, long actual_value,
+DF_TEST_EXPORT void df_test_assert_fail(const char *expr, intptr_t actual_value,
     const char *file, int line);
 
 /* df_test_assert_eq_fail — обработка DF_ASSERT_EQ
@@ -851,7 +852,7 @@ DF_TEST_EXPORT void df_test_assert_fail(const char *expr, long actual_value,
  *   expr_a, expr_b — строковые представления выражений
  *   file, line    — местоположение assertion
  */
-DF_TEST_EXPORT void df_test_assert_eq_fail(long a, long b, 
+DF_TEST_EXPORT void df_test_assert_eq_fail(intptr_t a, intptr_t b, 
     const char *expr_a, const char *expr_b, const char *file, int line);
 
 /* df_test_assert_ne_fail — обработка DF_ASSERT_NE
@@ -863,7 +864,7 @@ DF_TEST_EXPORT void df_test_assert_eq_fail(long a, long b,
  *   expr_a, expr_b — строковые представления выражений
  *   file, line    — местоположение assertion
  */
-DF_TEST_EXPORT void df_test_assert_ne_fail(long a, long b, 
+DF_TEST_EXPORT void df_test_assert_ne_fail(intptr_t a, intptr_t b, 
     const char *expr_a, const char *expr_b, const char *file, int line);
 
 /* df_test_assert_str_eq_fail — обработка DF_ASSERT_STR_EQ
@@ -1172,7 +1173,7 @@ void df_test_init(void) {
  * - _df_tc_ctx.failed устанавливается в 1 вызывающим макросом
  * - Возвращает управление в тест-функцию для продолжения выполнения
  */
-void df_test_assert_fail(const char *expr, long actual_value,
+void df_test_assert_fail(const char *expr, intptr_t actual_value,
     const char *file, int line) {
     if (_df_report.count < DF_TEST_MAX_RESULTS && !_df_tc_ctx.xfail) {
         _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
@@ -1182,7 +1183,7 @@ void df_test_assert_fail(const char *expr, long actual_value,
         _df_report.results[_df_report.count].failed_expr = expr;
         snprintf(_df_report.results[_df_report.count].message, 
             sizeof(_df_report.results[_df_report.count].message),
-            "Assertion failed: %s (expected non-zero, got %ld)", expr, actual_value);
+            "Assertion failed: %s (expected non-zero, got %ld)", expr, (long)actual_value);
         _df_report.count++;
     }
 }
@@ -1196,7 +1197,7 @@ void df_test_assert_fail(const char *expr, long actual_value,
  *   x, y — строковые представления выражений
  *   5, 10 — их числовые значения
  */
-void df_test_assert_eq_fail(long a, long b, 
+void df_test_assert_eq_fail(intptr_t a, intptr_t b, 
     const char *expr_a, const char *expr_b, const char *file, int line) {
     if (_df_report.count < DF_TEST_MAX_RESULTS && !_df_tc_ctx.xfail) {
         _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
@@ -1205,7 +1206,7 @@ void df_test_assert_eq_fail(long a, long b,
         _df_report.results[_df_report.count].line = line;
         snprintf(_df_report.results[_df_report.count].message, 
             sizeof(_df_report.results[_df_report.count].message),
-            "Expected %s (%ld) == %s (%ld)", expr_a, a, expr_b, b);
+            "Expected %s (%ld) == %s (%ld)", expr_a, (long)a, expr_b, (long)b);
         _df_report.count++;
     }
 }
@@ -1215,7 +1216,7 @@ void df_test_assert_eq_fail(long a, long b,
  * Формирует сообщение вида:
  *   "Expected x (5) != y (5)"
  */
-void df_test_assert_ne_fail(long a, long b, 
+void df_test_assert_ne_fail(intptr_t a, intptr_t b, 
     const char *expr_a, const char *expr_b, const char *file, int line) {
     if (_df_report.count < DF_TEST_MAX_RESULTS && !_df_tc_ctx.xfail) {
         _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
@@ -1224,7 +1225,7 @@ void df_test_assert_ne_fail(long a, long b,
         _df_report.results[_df_report.count].line = line;
         snprintf(_df_report.results[_df_report.count].message, 
             sizeof(_df_report.results[_df_report.count].message),
-            "Expected %s (%ld) != %s (%ld)", expr_a, a, expr_b, b);
+            "Expected %s (%ld) != %s (%ld)", expr_a, (long)a, expr_b, (long)b);
         _df_report.count++;
     }
 }
