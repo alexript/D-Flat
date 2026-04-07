@@ -14,7 +14,7 @@
  * - Система тестовых наборов (suite) с подсчётом результатов
  * - Поддержка пропуска тестов (skip)
  * - Stub-система для подмены DOS-вызовов (getvideo, keyboard, mouse, timer)
- * - Использование setjmp/longjmp для аварийного выхода из упавшего теста
+ * - Assertion-механизм на основе флага ошибки в контексте тест-кейса
  *
  * =============================================================================
  * БЫСТРЫЙ СТАРТ
@@ -80,7 +80,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <setjmp.h>
 
 /* DF_TEST_EXPORT — макрос экспорта символов
  *
@@ -255,12 +254,10 @@ typedef struct {
 
 /* DF_TEST_CONTEXT — внутренний контекст фреймворка
  *
- * Хранит состояние текущего выполнения теста. Используется для
- * восстановления после assertion через setjmp/longjmp.
+ * Хранит состояние текущего выполнения теста.
  *
  * Поля:
  *   mock_count    — счётчик подменённых вызовов (для отладки stub-системы)
- *   jump_buffer   — буфер для setjmp/longjmp (аварийный выход из теста)
  *   test_status   — статус текущего теста
  *
  * Внутреннее использование: не требует прямого доступа со стороны
@@ -268,9 +265,31 @@ typedef struct {
  */
 typedef struct {
     int mock_count;       /* Счётчик моков (для отладки) */
-    jmp_buf jump_buffer;  /* Буфер для longjmp при assertion */
     int test_status;      /* Статус выполнения теста */
 } DF_TEST_CONTEXT;
+
+/* DF_TC_CONTEXT — контекст выполняемого тест-кейса
+ *
+ * Хранит состояние текущего выполняемого тест-кейса.
+ * Используется assertion-макросами для проверки, не упал ли уже тест.
+ *
+ * Поля:
+ *   failed     — флаг ошибки (1 = тест уже упал)
+ *   suite_name — имя набора (для записи в отчёт)
+ *   test_name  — имя теста (для записи в отчёт)
+ *
+ * Использование:
+ *   1. df_test_run_suite() сбрасывает failed=0 перед каждым тестом
+ *   2. DF_ASSERT_* проверяют failed перед выполнением
+ *   3. После tc->func() проверяется failed для определения результата
+ */
+typedef struct {
+    int failed;           /* 1 = тест уже упал на предыдущем assert */
+    const char *suite_name;  /* Имя текущего набора */
+    const char *test_name;   /* Имя текущего теста */
+} DF_TC_CONTEXT;
+
+extern DF_TC_CONTEXT _df_tc_ctx;
 
 /* =============================================================================
  * МАКРОСЫ ASSERTIONS
@@ -280,18 +299,22 @@ typedef struct {
  * они гарантируют, что макрос ведёт себя как одиночный оператор.
  *
  * При провале assertion:
- * 1. Записывается информация об ошибке в _df_report
- * 2. Вызывается longjmp для аварийного выхода из теста
- * 3. Управление возвращается в df_test_run_suite()
+ * 1. Устанавливается флаг _df_tc_ctx.failed = 1
+ * 2. Записывается информация об ошибке в _df_report
+ * 3. Возвращается к вызывателю
  *
- * Это позволяет продолжить выполнение следующих тестов после провала
- * текущего, не требуя ручного return/break.
+ * Subsequent assertions в том же тесте пропускаются (shadowed).
+ * После выхода из тест-функции df_test_run_suite() проверяет
+ * _df_tc_ctx.failed и помечает тест как failed.
  */
 
 /* DF_ASSERT — базовый макрос assertion
  *
  * Проверяет истинность выражения expr. При false вызывает
  * df_test_assert_fail() с информацией о файле и строке.
+ *
+ * Перед выполнением проверяет _df_tc_ctx.failed — если тест уже
+ * упал на предыдущем assertion, пропускает проверку (shadowed).
  *
  * Параметры:
  *   expr — выражение, которое должно быть истинным
@@ -306,7 +329,8 @@ typedef struct {
  *   "Assertion failed: <выражение> (expected non-zero, got 0)"
  */
 #define DF_ASSERT(expr) \
-    do { if (!(expr)) { \
+    do { if (!_df_tc_ctx.failed && !(expr)) { \
+        _df_tc_ctx.failed = 1; \
         df_test_assert_fail(#expr, (long)(expr), __FILE__, __LINE__); \
     } } while(0)
 
@@ -335,6 +359,8 @@ typedef struct {
  * Проверяет равенство двух значений. При неравенстве вызывает
  * df_test_assert_eq_fail() с отладочной информацией.
  *
+ * Перед выполнением проверяет _df_tc_ctx.failed.
+ *
  * Параметры:
  *   a, b — сравниваемые значения (приводятся к long)
  *
@@ -347,7 +373,8 @@ typedef struct {
  *   "Expected x (5) == y (10)"
  */
 #define DF_ASSERT_EQ(a, b) \
-    do { if ((a) != (b)) { \
+    do { if (!_df_tc_ctx.failed && (a) != (b)) { \
+        _df_tc_ctx.failed = 1; \
         df_test_assert_eq_fail((long)(a), (long)(b), #a, #b, __FILE__, __LINE__); \
     } } while(0)
 
@@ -355,6 +382,8 @@ typedef struct {
  *
  * Проверяет неравенство двух значений. При равенстве вызывает
  * df_test_assert_ne_fail().
+ *
+ * Перед выполнением проверяет _df_tc_ctx.failed.
  *
  * Параметры:
  *   a, b — сравниваемые значения (приводятся к long)
@@ -365,7 +394,8 @@ typedef struct {
  *     DF_ASSERT_NE(status, ERROR_CODE);
  */
 #define DF_ASSERT_NE(a, b) \
-    do { if ((a) == (b)) { \
+    do { if (!_df_tc_ctx.failed && (a) == (b)) { \
+        _df_tc_ctx.failed = 1; \
         df_test_assert_ne_fail((long)(a), (long)(b), #a, #b, __FILE__, __LINE__); \
     } } while(0)
 
@@ -418,6 +448,8 @@ typedef struct {
  * Проверяет равенство двух строк (strcmp). При неравенстве
  * выводит оба значения в сообщении об ошибке.
  *
+ * Перед выполнением проверяет _df_tc_ctx.failed.
+ *
  * Параметры:
  *   a, b — сравниваемые строки (char *)
  *
@@ -430,13 +462,16 @@ typedef struct {
  *   "String mismatch: "hello" vs "world""
  */
 #define DF_ASSERT_STR_EQ(a, b) \
-    do { if (strcmp((a), (b)) != 0) { \
+    do { if (!_df_tc_ctx.failed && strcmp((a), (b)) != 0) { \
+        _df_tc_ctx.failed = 1; \
         df_test_assert_str_eq_fail((a), (b), __FILE__, __LINE__); \
     } } while(0)
 
 /* DF_ASSERT_MEM_EQ — assertion равенства блоков памяти
  *
  * Проверяет побайтовое равенство двух блоков памяти.
+ *
+ * Перед выполнением проверяет _df_tc_ctx.failed.
  *
  * Параметры:
  *   a, b   — указатели на блоки памяти
@@ -452,7 +487,8 @@ typedef struct {
  *   "Memory mismatch: 10 bytes differ"
  */
 #define DF_ASSERT_MEM_EQ(a, b, size) \
-    do { if (memcmp((a), (b), (size)) != 0) { \
+    do { if (!_df_tc_ctx.failed && memcmp((a), (b), (size)) != 0) { \
+        _df_tc_ctx.failed = 1; \
         df_test_assert_mem_eq_fail((a), (b), (size), __FILE__, __LINE__); \
     } } while(0)
 
@@ -662,10 +698,11 @@ DF_TEST_EXPORT void df_test_init(void);
  * Последовательно выполняет все тесты в указанном наборе.
  * Для каждого теста:
  *   1. Пропускает, если skipped = 1
- *   2. Выполняет setjmp для перехвата assertion
+ *   2. Сбрасывает _df_tc_ctx.failed = 0
  *   3. Вызывает тестовую функцию
- *   4. При успехе увеличивает tests_passed
- *   5. При assertion (longjmp) увеличивает tests_failed
+ *   4. Проверяет _df_tc_ctx.failed:
+ *      - Если 0: увеличивает tests_passed
+ *      - Если 1: увеличивает tests_failed
  *
  * Параметры:
  *   suite — указатель на структуру DF_TEST_SUITE
@@ -746,13 +783,13 @@ DF_TEST_EXPORT int df_test_get_exit_code(void);
  * =============================================================================
  *
  * Вызываются автоматически при провале assertion-макросов.
- * Заполняют структуру отчёта и выполняют longjmp для выхода из теста.
+ * Заполняют структуру отчёта. Флаг ошибки уже установлен макросом.
  */
 
 /* df_test_assert_fail — обработка DF_ASSERT
  *
  * Внутренняя функция, вызываемая при провале DF_ASSERT.
- * Записывает информацию об assertion и выполняет longjmp.
+ * Записывает информацию об assertion в отчёт.
  *
  * Параметры:
  *   expr — строковое представление выражения
@@ -1023,20 +1060,21 @@ extern int stub_mouse_buttons;
  * Внутренняя архитектура:
  *
  *   _df_test_ctx  — глобальный контекст выполнения теста
+ *   _df_tc_ctx    — контекст выполняемого тест-кейса (failed, suite_name, test_name)
  *   _df_report    — глобальный отчёт о результатах
  *
  * Механизм assertion:
- *   1. df_test_run_suite() вызывает setjmp() для сохранения контекста
+ *   1. df_test_run_suite() сбрасывает _df_tc_ctx.failed = 0
  *   2. Тестовая функция выполняется
- *   3. Если assertion проходит — тест завершается нормально
- *   4. Если assertion падает — вызывается longjmp() с кодом 1
- *   5. Управление возвращается в setjmp(), которое возвращает 1
- *   6. Счётчики обновляются, выполняется следующий тест
+ *   3. Assertion-макросы проверяют _df_tc_ctx.failed перед выполнением
+ *   4. При провале: _df_tc_ctx.failed = 1, запись в _df_report, return
+ *   5. Subsequent assertions пропускаются (shadowed)
+ *   6. После выхода из тест-функции: проверка _df_tc_ctx.failed
  *
  * Этот механизм позволяет:
  * - Избежать множественных вложенных if для проверки ошибок
  * - Продолжить выполнение других тестов после провала одного
- * - Сохранить стек вызовов в момент провала для отладки
+ * - Записать информацию о первой ошибке для отчёта
  */
 
 #ifdef DF_TEST_IMPLEMENTATION
@@ -1050,6 +1088,15 @@ extern int stub_mouse_buttons;
  * Обнуляется при каждом вызове df_test_init().
  */
 static DF_TEST_CONTEXT _df_test_ctx = {0};
+
+/* _df_tc_ctx — контекст выполняемого тест-кейса
+ *
+ * Глобальная переменная для хранения состояния текущего тест-кейса.
+ * Используется assertion-макросами для раннего выхода при already failed.
+ *
+ * Примечание: определена в test_main.c (единственный файл с DF_TEST_IMPLEMENTATION)
+ */
+DF_TC_CONTEXT _df_tc_ctx = {0};
 
 /* _df_report — глобальный отчёт о результатах
  *
@@ -1066,6 +1113,7 @@ static DF_TEST_REPORT _df_report = {0};
  */
 void df_test_init(void) {
     memset(&_df_test_ctx, 0, sizeof(_df_test_ctx));
+    memset(&_df_tc_ctx, 0, sizeof(_df_tc_ctx));
     memset(&_df_report, 0, sizeof(_df_report));
 }
 
@@ -1075,17 +1123,18 @@ void df_test_init(void) {
  *   1. Проверяем, есть ли место в буфере результатов
  *   2. Записываем file, line, failed_expr
  *   3. Формируем сообщение "Assertion failed: <expr>"
- *   4. Увеличиваем счётчик failed
- *   5. Выполняем longjmp для выхода из теста
+ *   4. Возвращаемся к вызывателю (тест продолжается, но asserts shadowed)
  *
  * Особенности:
  * - Использует snprintf для безопасной работы со строками
- * - Увеличивает _df_report.failed ДО longjmp
- * - longjmp восстанавливает контекст, сохранённый setjmp
+ * - _df_tc_ctx.failed устанавливается в 1 вызывающим макросом
+ * - Возвращает управление в тест-функцию для продолжения выполнения
  */
 void df_test_assert_fail(const char *expr, long actual_value,
     const char *file, int line) {
     if (_df_report.count < DF_TEST_MAX_RESULTS) {
+        _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
+        _df_report.results[_df_report.count].test_name = _df_tc_ctx.test_name;
         _df_report.results[_df_report.count].file = file;
         _df_report.results[_df_report.count].line = line;
         _df_report.results[_df_report.count].failed_expr = expr;
@@ -1094,8 +1143,6 @@ void df_test_assert_fail(const char *expr, long actual_value,
             "Assertion failed: %s (expected non-zero, got %ld)", expr, actual_value);
         _df_report.count++;
     }
-    _df_report.failed++;
-    longjmp(_df_test_ctx.jump_buffer, 1);
 }
 
 /* df_test_assert_eq_fail — обработка провала DF_ASSERT_EQ
@@ -1110,6 +1157,8 @@ void df_test_assert_fail(const char *expr, long actual_value,
 void df_test_assert_eq_fail(long a, long b, 
     const char *expr_a, const char *expr_b, const char *file, int line) {
     if (_df_report.count < DF_TEST_MAX_RESULTS) {
+        _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
+        _df_report.results[_df_report.count].test_name = _df_tc_ctx.test_name;
         _df_report.results[_df_report.count].file = file;
         _df_report.results[_df_report.count].line = line;
         snprintf(_df_report.results[_df_report.count].message, 
@@ -1117,8 +1166,6 @@ void df_test_assert_eq_fail(long a, long b,
             "Expected %s (%ld) == %s (%ld)", expr_a, a, expr_b, b);
         _df_report.count++;
     }
-    _df_report.failed++;
-    longjmp(_df_test_ctx.jump_buffer, 1);
 }
 
 /* df_test_assert_ne_fail — обработка провала DF_ASSERT_NE
@@ -1129,6 +1176,8 @@ void df_test_assert_eq_fail(long a, long b,
 void df_test_assert_ne_fail(long a, long b, 
     const char *expr_a, const char *expr_b, const char *file, int line) {
     if (_df_report.count < DF_TEST_MAX_RESULTS) {
+        _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
+        _df_report.results[_df_report.count].test_name = _df_tc_ctx.test_name;
         _df_report.results[_df_report.count].file = file;
         _df_report.results[_df_report.count].line = line;
         snprintf(_df_report.results[_df_report.count].message, 
@@ -1136,8 +1185,6 @@ void df_test_assert_ne_fail(long a, long b,
             "Expected %s (%ld) != %s (%ld)", expr_a, a, expr_b, b);
         _df_report.count++;
     }
-    _df_report.failed++;
-    longjmp(_df_test_ctx.jump_buffer, 1);
 }
 
 /* df_test_assert_str_eq_fail — обработка провала DF_ASSERT_STR_EQ
@@ -1151,6 +1198,8 @@ void df_test_assert_ne_fail(long a, long b,
 void df_test_assert_str_eq_fail(const char *a, const char *b, 
     const char *file, int line) {
     if (_df_report.count < DF_TEST_MAX_RESULTS) {
+        _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
+        _df_report.results[_df_report.count].test_name = _df_tc_ctx.test_name;
         _df_report.results[_df_report.count].file = file;
         _df_report.results[_df_report.count].line = line;
         snprintf(_df_report.results[_df_report.count].message, 
@@ -1158,8 +1207,6 @@ void df_test_assert_str_eq_fail(const char *a, const char *b,
             "String mismatch: \"%s\" vs \"%s\"", a ? a : "(null)", b ? b : "(null)");
         _df_report.count++;
     }
-    _df_report.failed++;
-    longjmp(_df_test_ctx.jump_buffer, 1);
 }
 
 /* df_test_assert_mem_eq_fail — обработка провала DF_ASSERT_MEM_EQ
@@ -1174,6 +1221,8 @@ void df_test_assert_str_eq_fail(const char *a, const char *b,
 void df_test_assert_mem_eq_fail(const void *a, const void *b, 
     size_t size, const char *file, int line) {
     if (_df_report.count < DF_TEST_MAX_RESULTS) {
+        _df_report.results[_df_report.count].suite_name = _df_tc_ctx.suite_name;
+        _df_report.results[_df_report.count].test_name = _df_tc_ctx.test_name;
         _df_report.results[_df_report.count].file = file;
         _df_report.results[_df_report.count].line = line;
         snprintf(_df_report.results[_df_report.count].message, 
@@ -1181,8 +1230,6 @@ void df_test_assert_mem_eq_fail(const void *a, const void *b,
             "Memory mismatch: %u bytes differ", (unsigned)size);
         _df_report.count++;
     }
-    _df_report.failed++;
-    longjmp(_df_test_ctx.jump_buffer, 1);
 }
 
 /* df_test_run_suite — выполнение набора тестов
@@ -1193,19 +1240,17 @@ void df_test_assert_mem_eq_fail(const void *a, const void *b,
  *   3. Для каждого теста:
  *      a. Проверяет флаг skipped — если да, увеличивает tests_skipped
  *      b. Выводит "RUN: testname ... "
- *      c. Увеличивает tests_run
- *      d. Вызывает setjmp() — если вернуло 0:
- *         - Выполняет тестовую функцию
- *         - Увеличивает tests_passed и _df_report.passed
- *         - Выводит "PASS"
- *      e. Иначе (setjmp вернуло 1, т.е. был longjmp):
- *         - Увеличивает tests_failed
- *         - Выводит "FAIL"
+ *      c. Сбрасывает _df_tc_ctx.failed = 0
+ *      d. Увеличивает tests_run
+ *      e. Выполняет тестовую функцию tc->func()
+ *      f. После выполнения проверяет _df_tc_ctx.failed
+ *         - Если 0: увеличивает tests_passed, выводит "PASS"
+ *         - Если 1: увеличивает tests_failed, выводит "FAIL"
  *   4. Выводит итоговую статистику по набору
  *
- * Важно: setjmp/longjmp используется для механизма "аварийного выхода".
- * При провале assertion выполняется longjmp, который восстанавливает
- * контекст и передаёт управление обратно в цикл (возврат из setjmp = 1).
+ * Assertion-макросы проверяют _df_tc_ctx.failed перед выполнением.
+ * При первом провале флаг устанавливается и последующие assertions
+ * в этом тесте пропускаются (shadowed).
  */
 void df_test_run_suite(DF_TEST_SUITE *suite) {
     printf("\n=== Running suite: %s ===\n", suite->name);
@@ -1224,14 +1269,20 @@ void df_test_run_suite(DF_TEST_SUITE *suite) {
         
         suite->tests_run++;
         
-        if (setjmp(_df_test_ctx.jump_buffer) == 0) {
-            tc->func();
+        _df_tc_ctx.failed = 0;
+        _df_tc_ctx.suite_name = suite->name;
+        _df_tc_ctx.test_name = tc->name;
+        
+        tc->func();
+        
+        if (_df_tc_ctx.failed) {
+            suite->tests_failed++;
+            _df_report.failed++;
+            printf("FAIL\n");
+        } else {
             suite->tests_passed++;
             _df_report.passed++;
             printf("PASS\n");
-        } else {
-            suite->tests_failed++;
-            printf("FAIL\n");
         }
     }
     
